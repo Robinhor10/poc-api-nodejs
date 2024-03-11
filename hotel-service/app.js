@@ -1,27 +1,28 @@
-const AWS = require('aws-sdk');
 const express = require('express');
+const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-const dynamoDB = new AWS.dynamoDB.DocumentClient({
-    region: 'us-east-1',
-    endpoint: "http://localstack:4566",
-    accessKeyId: 'test',
-    secretAccessKey: 'test',
-});
+app.post('/reserve', async (req, res) => {
+    const { reservationId } = req.body;
 
-app.post('/reserve', async (req, res)=> {
-    const {id, customerName, hotelName, reservationDate } = req.body;
     try {
-        await dynamoDB.put({
-            TableName: "Reservations",
-            Item: {id, customerName, hotelName, reservationDate, status: "PENDING" }
-        }).promise();
-        res.json({ message: "Reserva criada com sucesso ", id });
+        const paymentResponse = await axios.post('http://payment-service:3001/pay', { reservationId });
+        if (paymentResponse.status !== 200) {
+            throw new Error('Falha no pagamento');
+        }
+
+        const notifyResponse = await axios.post('http://notification-service:3002/notify', { message: 'Reserva confirmada' });
+        if (notifyResponse.status !== 200) {
+            throw new Error('Falha ao notificar');
+        }
+
+        res.status(200).json({ status: 'Reserva confirmada' });
     } catch (error) {
-        res.status(500).json({ error: error.message});
+        console.error(error);
+        res.status(500).json({ status: 'Falha na reserva', error: error.message });
     }
 });
 
-const PORT = 3000;
-app.listen(PORT, () => console.log('Service hotel executando na porta ${PORT}'));
+const port = 3000;
+app.listen(port, () => console.log(`Service hotel executando na porta ${port}`));

@@ -1,0 +1,12 @@
+{
+    "name": "payment-service",
+    "version": "1.0.0",
+    "main": "app.js",
+    "dependencies": {
+      "aws-sdk": "^2.800.0",
+      "axios": "^0.21.1",
+      "express": "^4.17.1",
+      "wait-on": "^5.2.1"
+    }
+  }
+  

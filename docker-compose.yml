@@ -1,32 +1,50 @@
 version: '3.8'
 services:
   localstack:
-    image: localstack/localstack
+    container_name: localstack_local
+    image: localstack/localstack:latest
     ports:
       - "4566:4566"
     environment:
+      - DEBUG=1
+      - USE_SSL=0
+      - AWS_CBOR_DISABLE=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - HOSTNAME=localstack
       - SERVICES=dynamodb
-      - START_WEB=0
-      - DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test-test
+      - AWS_SECRET_ACCESS_KEY=test
     volumes:
-      - ./data:/tmp/localstack/data:rw
+      - ./setup:/docker-entrypoint-initaws.d
+    command: /bin/bash /docker-entrypoint-initaws.d/init-localstack.sh
+
 
   hotel-service:
     build: ./hotel-service
+    ports:
+      - "3000:3000"
     environment:
       - LOCALSTACK_HOSTNAME=localstack
     depends_on:
       - localstack
-  
-  paymant-service:
+
+  payment-service:
     build: ./payment-service
+    ports:
+      - "3001:3001"
     environment:
       - LOCALSTACK_HOSTNAME=localstack
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
     depends_on:
       - localstack
 
   notification-service:
     build: ./notification-service
+    ports:
+      - "3002:3002"
     environment:
       - LOCALSTACK_HOSTNAME=localstack
     depends_on:
