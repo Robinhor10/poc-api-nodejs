@@ -1,51 +1,46 @@
 version: '3.8'
 services:
-  localstack:
-    container_name: localstack_local
-    image: localstack/localstack:latest
-    ports:
-      - "4566:4566"
-    environment:
-      - DEBUG=1
-      - USE_SSL=0
-      - AWS_CBOR_DISABLE=1
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - HOSTNAME=localstack
-      - SERVICES=dynamodb
-      - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test-test
-      - AWS_SECRET_ACCESS_KEY=test
-    volumes:
-      - ./setup:/docker-entrypoint-initaws.d
-    command: /bin/bash /docker-entrypoint-initaws.d/init-localstack.sh
-
-
-  hotel-service:
-    build: ./hotel-service
-    ports:
-      - "3000:3000"
-    environment:
-      - LOCALSTACK_HOSTNAME=localstack
-    depends_on:
-      - localstack
-
-  payment-service:
-    build: ./payment-service
+  reservations-service:
+    build: ./reservations-service
     ports:
       - "3001:3001"
     environment:
-      - LOCALSTACK_HOSTNAME=localstack
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - AWS_REGION=us-east-1
-    depends_on:
-      - localstack
-
-  notification-service:
-    build: ./notification-service
+  payments-service:
+    build: ./payments-service
     ports:
       - "3002:3002"
     environment:
-      - LOCALSTACK_HOSTNAME=localstack
-    depends_on:
-      - localstack
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+  notifications-service:
+    build: ./notifications-service
+    ports:
+      - "3003:3003"
+    environment:
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - ./localstack/init-localstack.sh:/docker-entrypoint-initaws.d/init-localstack.sh
+    command: >
+      sh -c "
+        chmod +x /docker-entrypoint-initaws.d/init-localstack.sh &&
+        /docker-entrypoint-initaws.d/init-localstack.sh &&
+        start-localstack
+      "
