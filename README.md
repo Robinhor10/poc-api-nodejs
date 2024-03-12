@@ -47,4 +47,25 @@ aws --endpoint-url=http://localhost:4566 dynamodb list-tables
 3. **Construir e rodar os serviços**: Use `docker-compose up --build` para construir e iniciar os serviços de hotel, pagamento e notificação.
 4. **Testar os endpoints**: Use uma ferramenta como Postman ou Insomnia para enviar requisições HTTP aos endpoints expostos pelos serviços.
 
+Para testar a API usando o Insomnia, siga estes passos:
+
+1. **Instale e Abra o Insomnia**: Se ainda não o fez, baixe e instale o Insomnia a partir do [site oficial](https://insomnia.rest/download).
+
+### Opção 1 ###
+# * Importando a collection *
+
+1. Faça o download do arquivo `Insomnia_poc-sqs` que se encontra na estrutura de pastas \poc-api-nodes\collections
+2. Abra a ferramenta Insomnia
+3. No menu superior clique em `Application`
+4. Depois clique em `Preferences`, no menu cliquem em `Data`
+5. E por fim clique em `Import`, e escolha o arquivo baixado na etapa um deste processo
+
+
+```
+
+3. **Envie o Request**:
+   - Clique no botão "Send" para enviar o request.
+   - Se tudo estiver configurado corretamente, você receberá uma resposta indicando que a mensagem foi enviada com sucesso
+
+
 Certifique-se de ter o Docker e o Docker Compose instalados em seu ambiente antes de executar os passos acima.
