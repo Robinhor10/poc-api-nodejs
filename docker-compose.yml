@@ -11,8 +11,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
   payments-service:
     build: ./payments-service
-    ports:
-      - "3002:3002"
+    command: node src/paymentsHandler.js  # Adjust the path if necessary
     environment:
       - DYNAMODB_ENDPOINT=http://localstack:4566
       - AWS_REGION=us-east-1
@@ -20,8 +19,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
   notifications-service:
     build: ./notifications-service
-    ports:
-      - "3003:3003"
+    command: node src/notificationsHandler.js  # Adjust the path if necessary
     environment:
       - DYNAMODB_ENDPOINT=http://localstack:4566
       - AWS_REGION=us-east-1
@@ -43,4 +41,31 @@ services:
         chmod +x /docker-entrypoint-initaws.d/init-localstack.sh &&
         /docker-entrypoint-initaws.d/init-localstack.sh &&
         start-localstack
+      "
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+    depends_on:
+      - zookeeper
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka-init:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - kafka
+    command: >
+      bash -c "
+        echo Waiting for Kafka to be ready...
+        while ! nc -z kafka 9092; do
+          sleep 1;
+        done;
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic reservaCriada;
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic pagamentoProcessado;
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic pagamentoFalhou;
       "

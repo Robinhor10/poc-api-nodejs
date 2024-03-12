@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const { Kafka } = require('kafkajs');
 
 // Configura o AWS SDK com a região do ambiente
 AWS.config.update({
@@ -10,19 +11,50 @@ AWS.config.update({
   
 const dynamoDb = new AWS.DynamoDB.DocumentClient({ endpoint: process.env.DYNAMODB_ENDPOINT });
 
-exports.sendNotification = async (req, res) => {
-    const { idNotification, idReservation } = req.body;
-    const notificationStatus = 'Sent'; // Simulate notification sending
-    const params = {
-        TableName: 'notifications',
-        Item: { idNotification, idReservation, dateNotification: new Date().toISOString(), status: notificationStatus },
+// Configuração do Kafka
+const kafka = new Kafka({
+    clientId: 'notifications-service',
+    brokers: ['kafka:9092']
+});
+
+const consumer = kafka.consumer({ groupId: 'notifications-group' });
+
+const sendNotification = async (paymentResult) => {
+    // Lógica de envio de notificações
+    console.log(`Sending notification for payment: ${paymentResult.idPayment} with status ${paymentResult.status}`);
+    
+    // Simulação de envio de notificação
+    const notificationStatus = 'Sent';
+
+    const notificationResult = {
+        idNotification: paymentResult.idPayment + '_notification',
+        idPayment: paymentResult.idPayment,
+        status: notificationStatus,
+        date: new Date().toISOString()
     };
 
-    try {
-        await dynamoDb.put(params).promise();
-        res.status(200).json({ message: 'Notification sent successfully' });
-    } catch (error) {
-        console.error('Error sending notification:', error);
-        res.status(500).json({ message: 'Error sending notification' });
-    }
+    // Gravar o resultado da notificação no DynamoDB
+    const params = {
+        TableName: 'notifications',
+        Item: notificationResult
+    };
+
+    await dynamoDb.put(params).promise();
+    return notificationResult;
 };
+
+const run = async () => {
+    await consumer.connect();
+
+    await consumer.subscribe({ topic: 'pagamentoProcessado', fromBeginning: true });
+    await consumer.subscribe({ topic: 'pagamentoFalhou', fromBeginning: true });
+
+    await consumer.run({
+        eachMessage: async ({ topic, partition, message }) => {
+            const paymentResult = JSON.parse(message.value.toString());
+            await sendNotification(paymentResult);
+        }
+    });
+};
+
+run().catch(console.error);

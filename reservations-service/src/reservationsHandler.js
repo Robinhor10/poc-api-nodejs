@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const { Kafka } = require('kafkajs');
 
 // Configura o AWS SDK com a região do ambiente
 AWS.config.update({
@@ -10,18 +11,34 @@ AWS.config.update({
   
 const dynamoDb = new AWS.DynamoDB.DocumentClient({ endpoint: process.env.DYNAMODB_ENDPOINT });
 
-exports.createReservation = async (req, res) => {
-    const { idReservation, name, date, value } = req.body;
-    const params = {
-        TableName: 'reservations',
-        Item: { idReservation, name, date, value, status: 'Reserved' },
-    };
+const kafka = new Kafka({
+    clientId: 'reservations-service',
+    brokers: ['kafka:9092'] // Substitua pelo seu endereço do Kafka
+  });
+  const producer = kafka.producer();
 
+  const createReservation = async (req, res) => {
+    const { idReservation, name, date, value } = req.body;
+    const reservation = { idReservation, name, date, value, status: 'Reserved' };
+  
+    // Grava no DynamoDB
+    const params = {
+      TableName: 'reservations',
+      Item: reservation,
+    };
+  
     try {
-        await dynamoDb.put(params).promise();
-        res.status(200).json({ message: 'Reservation created successfully' });
+      await dynamoDb.put(params).promise();
+      await producer.connect();
+      await producer.send({
+        topic: 'reservaCriada',
+        messages: [{ value: JSON.stringify(reservation) }],
+      });
+      res.status(200).json({ message: 'Reservation created and event published' });
     } catch (error) {
-        console.error('Error creating reservation:', error);
-        res.status(500).json({ message: 'Error creating reservation' });
+      console.error('Error:', error);
+      res.status(500).json({ message: 'Error creating reservation' });
     }
-};
+  };
+  
+  exports.createReservation = createReservation;
